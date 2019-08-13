@@ -46,6 +46,10 @@
  * adapted from work for the Iomega Zip by Grant R. Guenther 
  * and Itai Nahshon
  *
+ * 2019/08 - Modified by Cengiz Gunay <cengique@users.sf.net>
+ * - Added support for IOMEGA ZIP 250 drive
+ * - Increased verbosity of error messages
+ *
  */
 
 static char rcsid[] = "$Id: jaztool.c,v 1.3 1996/07/27 16:30:45 root Exp $";
@@ -66,6 +70,11 @@ struct sdata {
   char cmd[256];
 } scsi_cmd;
 
+/*
+ * Drive identifier
+ */
+char	id[25] = "\0";
+
 
 /*
  *----------------------------------------------------------------------
@@ -84,7 +93,7 @@ struct sdata {
  */
 void error(char * msg)
 { 	
-  printf("jaztool: %s\n",msg);
+  printf("jaztool %s: %s\n", id, msg);
   exit(1);
 }
 
@@ -160,7 +169,6 @@ is_raw_scsi( char * fs )
 int
 is_jaz( int fd )
 {	
-  char	id[25];
   int	i;
   
   scsi_cmd.inlen = 0;
@@ -178,11 +186,13 @@ is_jaz( int fd )
   for(i=0;i<24;i++) {
     id[i] = scsi_cmd.cmd[i+8];
   }
-  id[24] = 0;
+  /*
+   * Truncate at 15 since the two drives we accept are only 15 chars
+   * long, although it could go until 24. May need to change this in
+   * future.
+   */
+  id[15] = 0;
 
-  // Debug statement
-  printf("%s\n", id);
-  
   /* 
    * compare the string case insensitive
    * just in case Iomega changes the
@@ -339,9 +349,11 @@ dostatus( int fd, char * dev )
 
   s = get_prot_mode(fd);
 
-  if (s == 0) printf("jaztool: %s is not write-protected\n",dev);
-  if (s == 2) printf("jaztool: %s is write-protected\n",dev);
-  if (s == 3) printf("jaztool: %s is password write-protected\n",dev);
+  if (s == 0) printf("jaztool %s: %s is not write-protected\n",id,dev);
+  else if (s == 2) printf("jaztool %s: %s is write-protected\n",id,dev);
+  else if (s == 3) printf("jaztool %s: %s is password write-protected\n",id,dev);
+  else if (s == 5) printf("jaztool %s: %s is password read/write-protected\n",id,dev);
+  else printf("jaztool %s: %s status %d unknown\n",id,dev, s);
 }
 
 
@@ -390,7 +402,7 @@ pmode ( int fd, int mode, char * dev)
   }
   
   if (ioctl(fd,SCSI_IOCTL_SEND_COMMAND,(void *)&scsi_cmd))
-    error("set protection mode ioctl error");
+    error("set protection mode ioctl error - wrong password?");
   
   dostatus(fd,dev);
   
@@ -420,8 +432,8 @@ pmode ( int fd, int mode, char * dev)
  */
 main(int argc, char **argv)
 {  	
-  int rs;
-  int jfd;
+  int   rs;
+  int   jfd;
 
   if (argc != 3) {
     printf("usage: jaztool /dev/sd? eject|ro|rw|status\n");
@@ -435,7 +447,9 @@ main(int argc, char **argv)
   jfd = open(argv[1],0);
   if (jfd < 0) error("unable to open device");
 
-  if (!is_jaz(jfd)) error("device is not an IOMEGA JAZ drive");
+  if (!is_jaz(jfd)) {
+    error("not a known IOMEGA JAZ/ZIP drive");
+  }
 
   if (!strcmp(argv[2],"eject")) eject(jfd);
   else if (!strcmp(argv[2],"ro")) pmode(jfd,2,argv[1]);
