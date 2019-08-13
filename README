@@ -1,0 +1,49 @@
+
+jaztool 1.0
+-----------
+
+Iomega Jaz Tool for Linux
+
+
+Usage:  jaztool <dev> <command>
+
+where <dev> must be the full name of a scsi device, eg: /dev/sdc, note
+that you must not specify a partition on the device.  <command> can
+be one of:
+
+	eject	ejects the disk in the drive
+	ro	puts the disk into read-only mode, and ejects
+	rw      puts the disk into read-write mode, and ejects  
+	status  prints the read/write status of the disk
+
+If the disk is in a password protected mode, you will be prompted for
+a password when you attempt to change the mode.  This version of 
+jaztool does not officially support putting the disk into the password
+protected read-only mode, but the command 'PWRO' will do this if you
+are really sure that you want to.  REMEMBER: if you forget the password,
+you will not be able to put the disk back into read-write mode.
+
+NOTE:  The JAZ drive also supports a protection mode 5, under which the
+disk is neither readable nor writable until it is unlocked with a
+password.  This program cannot unlock a disk in mode 5 - as Linux is
+unable to open a disk that is not readable.  To support this feature
+would require patching the Linux kernel.  (And therefore, there is no
+command to put a disk into this mode, either.)
+  
+Whenever you change the write-protection mode, jaztool ejects the disk.
+This is done to ensure that Linux will recheck the mode before it attempts
+to use the disk again.
+
+This distribtion includes a binary version (jaztool) compiled with 
+gcc 2.7.2 on the Linux 2.0.7 kernel
+
+You can get the Latest verison at:
+	
+	http://www.cnct.com/~bwillmot/jaztool/
+
+
+Bob Willmot	
+bwillmot@cnct.com
+http://www.cnct.com/~bwillmot/
+
+$Id: README,v 1.3 1996/07/27 17:50:31 root Exp $
