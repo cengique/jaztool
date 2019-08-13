@@ -52,6 +52,7 @@
  * 2019/08 - Modified by Cengiz Gunay <cengique@users.sf.net>
  * - Added support for IOMEGA ZIP 250 drive
  * - Increased verbosity of error messages
+ * - Added unsupported operations and non-eject switch
  *
  */
 
