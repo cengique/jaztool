@@ -1,11 +1,11 @@
 /* 
  * jaztool.c --
  *
- *	Linux Tool for the Iomega Jaz Drive.
+ *	Linux Tool for the Iomega JAZ/ZIP Drives.
  *
  * This program uses SCSI_IOCTL_SEND_COMMAND to deliver vendor specific 
- * commands to an Iomega JAZ drive.  The program attempts to ensure that
- * the SCSI device is actually a JAZ drive and that it is not currently
+ * commands to an Iomega JAZ/ZIP drive.  The program attempts to ensure that
+ * the SCSI device is actually a JAZ/ZIP drive and that it is not currently
  * mounted.  The checks are *not* foolproof - but only root can do these
  * things anyway !
  * 
@@ -27,17 +27,20 @@
  * are really sure that you want to.  REMEMBER: if you forget the password,
  * you will not be able to put the disk back into read-write mode.
  * 
- * NOTE:  The JAZ drive also supports a protection mode 5, under which the
- * disk is neither readable nor writable until it is unlocked with a
- * password.  This program cannot unlock a disk in mode 5 - as Linux is
- * unable to open a disk that is not readable.  To support this feature
- * would require patching the Linux kernel.  (And therefore, there is no
- * command to put a disk into this mode, either.)
+ * NOTE: The JAZ/ZIP drives also support a protection mode 5 'PWNR',
+ * under which the disk is neither readable nor writable until it is
+ * unlocked with a password.  This program could not previously unlock
+ * a JAZ disk in mode 5 - as Linux 2.x is unable to open a disk that
+ * is not readable.  To support this feature would require patching
+ * the Linux kernel.  (And therefore, there is no command to put a
+ * disk into this mode, either.) However, as of 2019, and Linux 4.x
+ * USB ZIP drives are able to be unlocked from mode 5 using this
+ * program.
  *   
- * Whenever you change the write-protection mode, jaztool ejects the disk.
- * This is done to ensure that Linux will recheck the mode before it attempts
- * to use the disk again.
- *
+ * Whenever you change the write-protection mode, jaztool ejects the
+ * disk.  This is done to ensure that Linux will recheck the mode
+ * before it attempts to use the disk again. There is a switch -n if
+ * you prefer not to eject the disk after the operation. *
  *
  * (c) 1996 - Bob Willmot
  * bwillmot@cnct.com
@@ -74,6 +77,11 @@ struct sdata {
  * Drive identifier
  */
 char	id[25] = "\0";
+
+/*
+ * Debug switch
+ */
+unsigned char no_eject = 0;
 
 
 /*
@@ -354,6 +362,8 @@ dostatus( int fd, char * dev )
   else if (s == 3) printf("jaztool %s: %s is password write-protected\n",id,dev);
   else if (s == 5) printf("jaztool %s: %s is password read/write-protected\n",id,dev);
   else printf("jaztool %s: %s status %d unknown\n",id,dev, s);
+
+  /* status 13 ? */
 }
 
 
@@ -411,7 +421,8 @@ pmode ( int fd, int mode, char * dev)
    * the disk must be ejected 
    * so linux can reset the wp mode 
    */
-  eject(fd);	
+  if (!no_eject)
+    eject(fd);	
 }
 
 
@@ -435,8 +446,9 @@ main(int argc, char **argv)
   int   rs;
   int   jfd;
 
-  if (argc != 3) {
-    printf("usage: jaztool /dev/sd? eject|ro|rw|status\n");
+  if (argc < 3 || argc > 4) {
+    printf("usage: jaztool /dev/sd? eject|ro|rw|status [-n]\n");
+    printf("\t-n: no eject after operations\n");
     exit(1);
   }
   if (!is_raw_scsi(argv[1])) error("not a raw scsi device");
@@ -451,10 +463,15 @@ main(int argc, char **argv)
     error("not a known IOMEGA JAZ/ZIP drive");
   }
 
+  if (argc > 3 && !strcmp(argv[3],"-n"))
+    no_eject = 1;
+  
   if (!strcmp(argv[2],"eject")) eject(jfd);
   else if (!strcmp(argv[2],"ro")) pmode(jfd,2,argv[1]);
   else if (!strcmp(argv[2],"rw")) pmode(jfd,0,argv[1]);
+  /*  else if (!strcmp(argv[2],"RW")) pmode(jfd,8,argv[1]); */ /* testing - unprotect until eject? */
   else if (!strcmp(argv[2],"PWRO")) pmode(jfd,3,argv[1]);
+  else if (!strcmp(argv[2],"PWNR")) pmode(jfd,5,argv[1]); /* password protect read/ */
   else if (!strcmp(argv[2],"status")) dostatus(jfd,argv[1]);
   else error("unknown command");
 
