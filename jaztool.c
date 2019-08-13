@@ -179,13 +179,16 @@ is_jaz( int fd )
     id[i] = scsi_cmd.cmd[i+8];
   }
   id[24] = 0;
+
+  // Debug statement
+  printf("%s\n", id);
   
   /* 
    * compare the string case insensitive
    * just in case Iomega changes the
    * BIOS information of future drives
    */
-  return(!strncasecmp(id,"IOMEGA  JAZ 1GB",15));
+  return(!strncasecmp(id,"IOMEGA  JAZ 1GB",15) || !strncasecmp(id,"IOMEGA  ZIP 250",15));
 }
 
 
